@@ -62,6 +62,9 @@ export const analyzeVideo = async (video: {
   } catch (err) {
     const isClientError = err instanceof AppError && err.status === 400;
     if (isClientError) throw err; // bad upload: no engine can fix it
+    if (!config.allowDemoFallback) {
+      throw AppError.unavailable("Detection service is unavailable. Start the ML service and install the required model weights.");
+    }
     console.warn(
       `[engine] inference service failed (${err instanceof Error ? err.message : err}); using local simulator`,
     );
@@ -72,7 +75,7 @@ export const analyzeVideo = async (video: {
 export const engineStatus = async () => {
   const model = await mlServiceHealth();
   return {
-    primary: model.available ? "sach-model" : "demo",
+    primary: model.available ? "sach-model" : config.allowDemoFallback ? "demo" : "unavailable",
     model,
   };
 };

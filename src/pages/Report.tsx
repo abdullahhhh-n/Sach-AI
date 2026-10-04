@@ -51,12 +51,18 @@ const Report = () => {
     };
   }, [scanId, stateReport]);
 
-  const r: ScanReport | null = stateReport ?? fetched ?? null;
+  const isSample = !scanId && !stateReport;
+  const r: ScanReport | null = stateReport ?? fetched ?? (isSample ? sampleReport : null);
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 container py-12">
+        {isSample && (
+          <p className="mb-6 rounded-lg border border-border bg-secondary/40 p-4 text-sm text-muted-foreground">
+            Sample report with illustrative scores. No video was analyzed.
+          </p>
+        )}
         {loading && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -143,7 +149,7 @@ const ReportBody = ({ r }: { r: ScanReport }) => (
         <div className="mt-6 w-full grid grid-cols-2 gap-3 text-center">
           <div className="rounded-lg border border-border bg-secondary/40 p-3">
             <div className="text-[10px] uppercase font-mono text-muted-foreground tracking-wider">
-              Compression Robustness
+              Frame Score Consistency
             </div>
             <div className="mt-1 text-2xl font-bold font-mono text-primary">
               {r.compressionRobustness}%
@@ -244,7 +250,7 @@ const ReportBody = ({ r }: { r: ScanReport }) => (
           ["Picture check", "Face crops scored per frame"],
           ["Motion check", "LSTM over the sampled sequence"],
           ["Swap check", "Face vs surroundings texture match"],
-          ["Trained on", "FaceForensics++ (97% val accuracy)"],
+          ["Model family", "FaceForensics++ sequence detector"],
         ].map(([k, v]) => (
           <div key={k} className="rounded-lg border border-border bg-secondary/30 p-3">
             <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</dt>
@@ -256,7 +262,7 @@ const ReportBody = ({ r }: { r: ScanReport }) => (
 
     {r.engine === "demo" && (
       <p className="mt-6 text-center text-xs font-mono text-muted-foreground">
-        This report was produced by the local simulator because the inference service was offline.
+        This report contains simulated scores and does not assess video authenticity.
         Start <code className="text-primary">ml-service/</code> and rescan for real model output.
       </p>
     )}

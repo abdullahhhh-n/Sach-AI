@@ -6,7 +6,10 @@ import { z } from "zod";
 const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(8787),
   DATABASE_PATH: z.string().default("./data/sach.db"),
-  JWT_SECRET: z.string().min(16).default("sach-ai-development-secret-do-not-use-in-prod"),
+  JWT_SECRET: z.string().min(32).optional(),
+  ALLOW_DEMO_FALLBACK: z.enum(["true", "false"]).default("false"),
+  HOST: z.string().default("127.0.0.1"),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
   ACCESS_TOKEN_TTL_MINUTES: z.coerce.number().int().positive().default(720),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   CLIENT_ORIGIN: z.string().default("http://localhost:8080"),
@@ -33,14 +36,26 @@ if (!parsed.success) {
 
 const env = parsed.data;
 
+if (env.NODE_ENV === "production" && (!env.JWT_SECRET || /change.me|development.secret/i.test(env.JWT_SECRET))) {
+  throw new Error("Production requires a random JWT_SECRET of at least 32 characters.");
+}
+if (env.NODE_ENV === "production" && env.ALLOW_DEMO_FALLBACK === "true") {
+  throw new Error("Simulated detection is disabled in production.");
+}
+// Local development can start without sharing a predictable signing key.
+const jwtSecret = env.JWT_SECRET ?? crypto.randomBytes(48).toString("base64url");
+
 export const config = {
   env: env.NODE_ENV,
   isProduction: env.NODE_ENV === "production",
   port: env.PORT,
+  host: env.HOST,
+  trustProxyHops: env.TRUST_PROXY_HOPS,
+  allowDemoFallback: env.ALLOW_DEMO_FALLBACK === "true",
   databasePath: path.resolve(process.cwd(), env.DATABASE_PATH),
   clientOrigin: env.CLIENT_ORIGIN,
   auth: {
-    jwtSecret: env.JWT_SECRET,
+    jwtSecret,
     accessTokenTtlMinutes: env.ACCESS_TOKEN_TTL_MINUTES,
     refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
     /** Cookies are scoped so they only travel with API requests. */

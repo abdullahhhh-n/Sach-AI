@@ -146,7 +146,6 @@ const ForensicConsole = () => {
 };
 
 const Hero = () => {
-  const accuracy = useCountUp(97);
   const frames = useCountUp(60);
   const scans = useCountUp(2, 1400, 0);
 
@@ -213,12 +212,12 @@ const Hero = () => {
 
           <div className="mt-10 grid grid-cols-3 gap-6 max-w-md">
             <div>
-              <div className="text-2xl font-bold text-primary font-mono">{accuracy}%</div>
-              <div className="text-xs text-muted-foreground">Validation accuracy (FF++)</div>
+              <div className="text-2xl font-bold text-primary font-mono">Research</div>
+              <div className="text-xs text-muted-foreground">Prototype; results need review</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-primary font-mono">{frames}</div>
-              <div className="text-xs text-muted-foreground">Frames analyzed per scan</div>
+              <div className="text-xs text-muted-foreground">Default sampled frames</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-primary font-mono">{scans}</div>

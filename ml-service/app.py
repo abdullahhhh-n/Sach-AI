@@ -29,7 +29,6 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 
 import faceconsistency as fcs
@@ -42,6 +41,7 @@ FACE_PADDING = 40  # same padding the repo applies around detected faces
 FACE_DETECT_MAX_SIDE = 640  # face detection runs at most this large, then boxes scale back
 THUMBNAIL_MAX_WIDTH = 720
 HEATMAP_MAX_WIDTH = 720
+MAX_VIDEO_BYTES = int(os.environ.get("MAX_VIDEO_MB", "200")) * 1024 * 1024
 
 # The detector is CPU-heavy; serialize inference to keep memory predictable.
 INFERENCE_LOCK = threading.Lock()
@@ -145,12 +145,6 @@ def generalist_aggregate(probs: list[float]) -> Optional[dict]:
     }
 
 app = FastAPI(title="Sach-AI Inference Service", version="1.2.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # only reached via the Node backend / localhost
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # {sequence_length: (model, weight_filename)}
 _models: dict[int, tuple[DeepfakeModel, str]] = {}
@@ -371,11 +365,15 @@ async def analyze(
     tmp_path = ""
     try:
         with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False, dir=str(Path(tempfile.gettempdir()))) as tmp:
-            content = await video.read()
-            if not content:
-                raise HTTPException(status_code=400, detail="Empty upload")
-            tmp.write(content)
             tmp_path = tmp.name
+            total = 0
+            while chunk := await video.read(1024 * 1024):
+                total += len(chunk)
+                if total > MAX_VIDEO_BYTES:
+                    raise HTTPException(status_code=413, detail="Video exceeds the upload size limit")
+                tmp.write(chunk)
+            if not total:
+                raise HTTPException(status_code=400, detail="Empty upload")
 
         capture = cv2.VideoCapture(tmp_path)
         if not capture.isOpened():
